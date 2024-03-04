@@ -1,0 +1,99 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(immunarch)
+```
+
+
+# Parse metadata
+```{r}
+read_tsv("yf_data/Subject 1_PBMC_Day 0.tsv")
+read_tsv("yf_data/metadata.tsv") %>% 
+  rename(Sample = sample) %>% 
+  write_tsv("yf_data/metadata.tsv")
+```
+
+
+# Read data
+```{r}
+immdata <- repLoad(here("yf_data_mini"))
+```
+
+# Descriptive analysis
+
+```{r}
+imm_gu <- geneUsage(immdata$data, "hs.trbv", .norm = T)
+```
+```{r}
+immdata$meta
+```
+### Gene usage
+```{r}
+vis(imm_gu, .by = "day", .meta = immdata$meta, .plot = "box")
+```
+### Spectratyping
+```{r}
+p1 <- vis(spectratype(immdata$data[[2]], .quant = "id", .col = "nt"))
+p2 <- vis(spectratype(immdata$data[[2]], .quant = "count", .col = "aa"))
+
+p1 + p2
+```
+### Rarefaction
+
+```{r}
+imm_raref <- repDiversity(immdata$data, "raref", .verbose = F)
+
+p1 <- vis(imm_raref)
+p2 <- vis(imm_raref, .by = "day", .meta = immdata$meta)
+
+p1
+```
+```{r}
+p2
+```
+```{r}
+imm_raref
+```
+
+
+# Similarity analysis
+
+```{r}
+# .col = how a clone is defined, e.g. nt, aa, aa+v
+# .method = overlap metric 
+imm_ov_public <- repOverlap(immdata$data, .col = "aa", .method = "public", .verbose = F)
+imm_ov_j <- repOverlap(immdata$data, .col = "aa", .method = "jaccard", .verbose = F)
+imm_ov_mh <- repOverlap(immdata$data, .col = "aa", .method = "morisita", .verbose = F)
+```
+```{r}
+imm_ov_public %>% as.dist() %>% broom::tidy()%>% arrange(desc(distance))
+imm_ov_j %>% as.dist() %>% broom::tidy() %>% arrange(desc(distance))
+```
+```{r}
+immdata$data$`Subject 1_PBMC_Day 0`
+```
+
+
+```{r, fig.width = 7, fig.height = 6}
+vis(imm_ov_public, "heatmap2", .color = viridis::viridis(100))
+vis(imm_ov_mh, "heatmap2", .color = viridis::viridis(100))
+```
+
+
+
+
+```{r}
+x$meta
+```
+```{r}
+pr <- pubRep(x$data, "aa+v", .coding = T, .verbose = F)
+pubRepFilter(pr, immdata$meta, c(subject = "Subject 1"))
+```
+
+```{r}
+names(x$data)
+```
+
