@@ -6,8 +6,10 @@
   - The raw data was processed into the mini dataset using `scripts/make_mini_yf_data.R`
   - Instructions for downloading the raw data from ImmuneAccess are included below
 - A demo of general TCR analysis using `immunarch` is found in `immunarch_demo.Rmd`
+  - Repertoire analysis is typically performed with custom workflows or task-specific tools, but `immunarch` does a good job of unifying general analytical approaches, at the expense of some flexibility.
 - A demo of TCR motif analysis using `GLIPH2` is found in `GLIPH_demo.Rmd`
-- `renv` is used in this demo to help generate a reporducible working environment
+  - GLIPH2 is one of many ways available to attempt TCR clustering and while there is no clear "best" or "most popular" approach, GLIPH2 is one of the most commonly implemented at this time. 
+- `renv` is used in this demo to help generate a reproducible working environment
 
 
 # Setup
@@ -38,8 +40,20 @@
 
 - Some common issues discussed here: <https://r.igraph.org/articles/installation-troubleshooting>
 
-- `renv` contains earlier versions of `igraph/1.2.10`, `tidygraph/1.2.0` which solved some problems with allowing `R` to download all latest versions of packages and dependencies 
+- `renv` lockfile contains earlier versions of `igraph/1.2.10` and `tidygraph/1.2.0`, which avoids some dependency problems created when `R` is allowed to download all latest versions of packages 
 
+# Useful resources
+
+### Data
+
+- [ImmuneAccess](https://clients.adaptivebiotech.com/login) - Portal for bulk antigen-receptor sequencing data generated using Adaptive's ImmunoSeq platform. Investigators have the option of making their data publicly available.
+- [VDJDB](https://vdjdb.cdr3.net/) - Database of validated TCR:antigen pairs including both bulk and single-cell data. Varying levels of validation confidence specified. Useful for antigen-related analysis, less useful for whole-repertoire level analysis
+
+### Learning
+
+- [Immunarch documentation](https://immunarch.com/index.html) - Contains many useful vignettes for what `immunarch` is capable of regarding repertoire analysis
+- [Github repo catalogging many antigen repertoire tutorials, papers, and tools](https://github.com/crazyhottommy/TCR-BCR-seq-analysis)
+- [Antibody society slack sign up](https://www.antibodysociety.org/airr-community/join-the-airr-community-slack-workspace/) - Antibody society is the main scholarly society for antigen receptor biology and maintains a slack channel to share new resources and troubleshoot analysis questions. 
 
 # Downloading data from ImmuneAccess
 

@@ -1,62 +1,232 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    toc_depth: 3
 ---
 
 ```{r}
 library(immunarch)
-```
-
-
-# Parse metadata
-```{r}
-read_tsv("yf_data/Subject 1_PBMC_Day 0.tsv")
-read_tsv("yf_data/metadata.tsv") %>% 
-  rename(Sample = sample) %>% 
-  write_tsv("yf_data/metadata.tsv")
+library(here)
 ```
 
 
 # Read data
+
+- `immunarch` has a unified command `repLoad` for importing repertoire data in a number of different formats including `immunoseq`, `mixcr`, `vdjtools`, `imgt`, `airr`, `10x`, and several others
+- The input to `repLoad` can either be a path to a specific repertoire data file or to a directory of multiple repertoire files
+  - If a directory is given, `repLoad` expects that a `metadata.tsv` file. This file should at least include a column `Sample` where each entry is identical to the name of a corresponding repertoire data file in the directory. 
+    - E.g. if `Subject 1_PBMC_Day 0.tsv.gz` is a sequence data file in the directory, `metadata.tsv` should have an entry for `Subject 1_PBMC_Day 0` under the `Sample` column. 
+    - Many sequencing platforms output a compatible metadata file, but it may be necessary to assemble one manually. 
+    - Additional columns and their names can be designated by the user according to the specific experiment (e.g. cell phenotype, experimental condition, etc.). These columns can be passed `immunarch` functions to perform various forms of differential analysis based on categories within the metadata. 
+
+
 ```{r}
-immdata <- repLoad(here("yf_data_mini"))
+# Read in data
+# Note: .coding is TRUE by default, which limits input data only to those in-frame
+#       antigen receptors. Typically, out of frame receptor sequences can be 
+#       ignored, but it is important to be aware of this behavior. 
+immdata <- repLoad(here("yf_data_mini"), .coding = FALSE)
 ```
+
+- Note several warnings given: `Warning: One or more parsing issues, call problems() on your data frame for details, e.g.: dat <- vroom(...)`
+- To determine what these warnings are, you would need to load the given data file directly with `vroom`, then call `problems()`. 
+- In this case, it is because `immunoSeq` formatted data often includes a column for "ambiguous" V-, D-, or J- segments, where a single gene could not be identified. This results in an entry like `TRBV4-1, TRBV14-1` which `vroom` will generate a warning for, unsure if the comma is meant to be a delimiter. In this case, it is not a problem and can be ignored. 
+
+```{r}
+# The `meta` slot in the immdata object contains the metadata 
+immdata$meta
+```
+```{r}
+# Note that the name of each element in immdata$data corresponds exactly to 
+# a line in the `Sample` column of the metadata 
+names(immdata$data)
+```
+
+```{r}
+# Example of one sample's sequencing data within the yellow-fever dataset
+head(immdata$data$`Subject 1_PBMC_Day 0`)
+```
+ - `Clones`/`Proportion` - Number of times and frequency of a unique sequence in dataset
+ - `CDR3.nt`/`CDR3.aa` - Nucleotide and amino acid sequence of CDR3 region respectively
+ - `V.name`/`V.name`/`D.name` - the specific V-, D-, and J- segments composing each CDR3 segment. 
+    - Typically a truly unique antigen receptor sequence is considered the `CDR3.aa` + `V.name`. However, analysis is often simplified by treating each `CDR3.aa` regardless of `V.name` as unique. 
+ - `Sequence` - Nucleotide sequence that differs from `CDR3.nt` in that it includes the entire read, not just the CDR3 region
+
+```{r}
+# If .coding=FALSE chosen in repLoad, coding and non-coding sequences can be distinguished
+head(coding(immdata$data$`Subject 1_PBMC_Day 0`)) # inframes() similar to coding()
+head(noncoding(immdata$data$`Subject 1_PBMC_Day 0`)) # outofframes() similar to #noncoding()
+```
+
+- Notice disruptions to `CDR3.aa` coding sequence in `noncoding()` output representing out of frame receptor sequences
+
+```{r, message=F, warning=F}
+# Reloading data to exclude noncoding receptors 
+immdata <- repLoad(here("yf_data_mini"), .coding = TRUE)
+```
+
 
 # Descriptive analysis
 
 ```{r}
-imm_gu <- geneUsage(immdata$data, "hs.trbv", .norm = T)
+# Unique clones within each dataset by amino acid sequence only (ignore TRBV)
+repDiversity(immdata$data, .col = "aa", .method = "div", .q=0, .verbose = F)
 ```
-```{r}
-immdata$meta
-```
-### Gene usage
-```{r}
-vis(imm_gu, .by = "day", .meta = immdata$meta, .plot = "box")
-```
-### Spectratyping
-```{r}
-p1 <- vis(spectratype(immdata$data[[2]], .quant = "id", .col = "nt"))
-p2 <- vis(spectratype(immdata$data[[2]], .quant = "count", .col = "aa"))
 
-p1 + p2
-```
 ### Rarefaction
 
-```{r}
-imm_raref <- repDiversity(immdata$data, "raref", .verbose = F)
+- How do you know how complete your sequencing data is? If you kept sequencing more lymphocytes, would you expect to find many more unique antigen receptor sequences or has your data already discovered the majority of antigen receptor sequences you are likely to find within an individual?
+- These are common questions with analogs in ecology. I.e. when you are counting unique animal species in a field site, how do you know if you've likely found most of the possible species or if you need to keep sampling?
+- A common tool to evaluate this question is **rarefaction analysis**
+- Rarefaction models the likelihood of discovering more antigen receptor sequences with more sequencing depth.
 
-p1 <- vis(imm_raref)
-p2 <- vis(imm_raref, .by = "day", .meta = immdata$meta)
+```{r}
+immdata_rarefaction <- repDiversity(immdata$data, .method = "raref", .verbose = F)
+```
+```{r}
+immdata_rarefaction
+```
 
-p1
+
+```{r, fig.width=12, fig.height=8}
+vis(immdata_rarefaction)
 ```
+
+
 ```{r}
-p2
+vis(imm_raref, .by = "day", .meta = immdata$meta)
 ```
+
+### Comparing V-gene usage
+
+- Clonal expansion of specific antigen receptor clones will also often lead to changes in the frequencies of broad classes of V-genes
+  - I.e. if `CASSYSDSGANVLTF:TRBV6-1` expands in a particular sample, `TRBV6-1` will appear broadly expanded because of it. However, this **does not mean** that every `TRBV6-1` containing clone is expanded. 
+- Because `CDR3` sequences are so diverse, it is often too difficult to measure changes in a repertoire based on changes in `CDR3` frequencies. However, essential every `V-gene` will be detected in every individual's set of `CDR3` sequences, so changes in `V-gene` frequencies can be used as a rough surrogate for antigen receptor repertoire shifts. 
+
 ```{r}
-imm_raref
+immdata_gene_usage <- geneUsage(immdata$data,
+                                .gene = "hs.trbv",
+                                .quant = "count",
+                                .ambig = "inc",
+                                .type = "segment",
+                                .norm = T)
 ```
+
+- `.gene` - Which gene segments to compare. Follows format of `{alias/species}.{gene type}` 
+- `.quant` - `NA` or `"count"`. Reflects whether gene usage should be weighted by the number of times a unique receptor using that gene is found.
+  - E.g. If sequence `CASSYSDSGANVLTF:TRBV6-1` is found 100 times, does that represent 1 count for `TRBV6-1` (i.e. `NA`) or 100 counts for `TRBV6-1` (i.e. `"count"`)
+- `.ambig` - How ambiguous genes are handled. I.e. for `TRAV1,TRAV2`, is each gene counted (`"inc"`), neither (`"exc"`), or the first one listed (`"maj"`)
+- `.type` - What level of granularity to count the gene. E.g. `"family"` = TRAV1, `"segment"` = TRAV1-1, `"allele"` = TRAV1-1*01
+- `.norm` - Whether data should be represented as counts (`FALSE`) or frequencies (`TRUE`). `TRUE` best when interested in comparing making comparisons
+
+```{r}
+immdata_gene_usage[is.na(immdata_gene_usage)] <- 0 # Convert NAs to 0 so p-values can be calculated
+immdata_gene_usage
+```
+
+```{r, fig.width=10, fig.height=6, warning=F, message=F}
+# Plotting V-gene usage
+vis(immdata_gene_usage, .by = "day", .meta = immdata$meta, .plot = "box")
+```
+- `.by` allowed for plot comparing conditions based on a metadata column
+- Values above gene segments represent p-values adjusted for multiple comparisons
+
+
+```{r}
+# Note that depreciation in tibble package used by immunarch currently prevents
+# display of column names with heatmap2 visualization of gene usage
+vis(immdata_gene_usage, .meta = immdata$meta, .plot = "heatmap2", .color = viridis::viridis(100))
+```
+
+- V-gene segment usage clusters samples based on subject rather than vaccine status
+- Even so, all samples tend to use similar pattern of V-gene segments. 
+
+### Spectratyping
+
+- Due to random DNA hairpin opening and N-nucleotide addition during VDJ recommendation, the distribution of CDR3 sequence lengths in a naive antigen receptor repertoire follows a relatively normal distribution
+- When a limited number of clones expand as a result of clonal expansion, the distribution of CDR3 sequence lengths within the entire repertoire is skewed as the legnths represented by the expanding clones become proportionally more frequent relative to others.
+  - This is particularly striking in the case of lymphocyte cancers, where a single antigen receptor (and thus antigen receptor length) overshadows all others.
+- This phenomena is the basis for one of the oldest and few clinically utilized antigen receptor assays: **spectratyping**
+  - Classically, spectratyping was performed by PCR amplifying the ends of the CDR3 region and quantifying the density of the bands at different fragment sizes to generate a distribution. 
+  - Now sequencing is used to directly obtain CDR3 length.
+  
+
+![](https://www.researchgate.net/profile/Marcella-Sarzotti-Kelsoe/publication/242254447/figure/fig1/AS:298668935663616@1448219631552/Schematic-diagram-illustrating-the-spectratyping-assay-T-cells-are-fractionated-from-a_W640.jpg)
+
+![](https://journals.sagepub.com/cms/10.1177/0300985816638724/asset/images/large/10.1177_0300985816638724-fig1.jpeg)
+```{r, fig.width=12, fig.height=4}
+p1 <- vis(spectratype(immdata$data$`Subject 1_PBMC_Day 0`, .quant = "count", .col = "nt")) + ggtitle("Nucleotide")
+p2 <- vis(spectratype(immdata$data$`Subject 1_PBMC_Day 0`, .quant = "count", .col = "aa")) + ggtitle("Amino acid")
+p3 <- vis(spectratype(immdata$data$`Subject 1_PBMC_Day 0`, .quant = "count", .col = "aa+v")) + ggtitle("Amino acid and TRBV")
+
+p1 + p2 + p3
+```
+
+```{r, fig.width=10, fig.height=6, message=F, warning=F}
+# Visualizing CDR3 length by specific TRBV gene segments
+# Requires a bit of a hack using immunarch directly
+p3+
+  facet_wrap(~Gene, scales = "free_y") +
+  scale_fill_manual(values = rep("black", 12)) +
+  theme(legend.position = "none")
+```
+- Can be helpful to break down CDR3 length by specific gene segment. If an expanded clone uses one of the less common gene segments, skewing in its CDR3 length may be masked by the lack of change in more common gene segments.
+- In the above example, it is possible TRBV6-1 is skewed, though this is probably an artifact of the downsampled dataset. Also invariant TCR MAIT cells tend to use TRBV6 genes. 
+
+```{r, fig.width=12, fig.height=6, message=F, warning=F}
+# Summarize spectratype by vaccination status 
+
+# Find 12 most common V-gene segments across all samples
+## Rather than summarize across all V-genes
+top_vgenes <- tibble(sample = names(immdata$data), data = immdata$data) %>% 
+  unnest(data) %>% 
+  summarise(freq = mean(Proportion), .by = "V.name") %>% 
+  slice_max(n = 12, order_by = freq) %>% 
+  pull(V.name)
+
+# Calculate average CDR3 length frequency across top V-genes for each sample 
+# within pre-vaccinated (Day 0) and post-vaccinated (Day 14) groups
+tibble(sample = names(immdata$data), data = immdata$data) %>% 
+  mutate(data = map(data, spectratype, .quant = "count", .col = "aa+v")) %>% 
+  unnest(data) %>% 
+  nest(.by = Gene) %>% 
+  filter(Gene %in% top_vgenes) %>% 
+  unnest(data) %>% 
+  mutate(Val = Val/sum(Val), .by = c("Gene", "sample")) %>% 
+  separate(sample, into = c("subject", "cell", "day"), sep = "_", remove = F) %>% 
+  ggplot(aes(x = factor(Length), y = Val, color = day, color = day))+
+  stat_summary(fun.y = mean, geom = "path", aes(group = day))+
+  geom_boxplot(outlier.shape = NA)+
+  facet_wrap(~Gene, scales = "free") +
+  theme_bw()+
+  scale_color_brewer(palette = "Dark2") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+- Vaccination status does not seems to significantly affect the average spectratype pattern within the most common V-genes
+
+```{r, fig.width=6, fig.height=4}
+# Cluster samples based on the spectratype of the top 5 most used V-genes
+spectratype_heatmaps <- tibble(sample = names(immdata$data), data = immdata$data) %>% 
+  mutate(data = map(data, spectratype, .quant = "count", .col = "aa+v")) %>% 
+  unnest(data) %>% 
+  nest(.by = Gene) %>% 
+  filter(Gene %in% top_vgenes[1:5]) %>% 
+  mutate(data = map2(data, Gene, function(d, g){
+    d %>% 
+    mutate(Val = Val/sum(Val), .by = "sample") %>% 
+    pivot_wider(names_from = "Length", values_from = "Val", values_fill = 0) %>% 
+    tibble::column_to_rownames("sample") %>% 
+    pheatmap::pheatmap(color = viridis::viridis(100), main = g)
+  }))
+```
+- In general, spectratype still clusters by subject rather than vaccine status
+
+
+
+
 
 
 # Similarity analysis
@@ -83,17 +253,4 @@ vis(imm_ov_mh, "heatmap2", .color = viridis::viridis(100))
 ```
 
 
-
-
-```{r}
-x$meta
-```
-```{r}
-pr <- pubRep(x$data, "aa+v", .coding = T, .verbose = F)
-pubRepFilter(pr, immdata$meta, c(subject = "Subject 1"))
-```
-
-```{r}
-names(x$data)
-```
 
