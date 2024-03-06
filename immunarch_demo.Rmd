@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "Yellow fever `immunarch` demo"
 output: 
   html_notebook:
     toc: true
@@ -11,7 +11,6 @@ output:
 library(immunarch)
 library(here)
 ```
-
 
 # Read data
 
@@ -93,11 +92,6 @@ immdata_rarefaction
 
 ```{r, fig.width=12, fig.height=8}
 vis(immdata_rarefaction)
-```
-
-
-```{r}
-vis(imm_raref, .by = "day", .meta = immdata$meta)
 ```
 
 ### Comparing V-gene usage
@@ -224,33 +218,140 @@ spectratype_heatmaps <- tibble(sample = names(immdata$data), data = immdata$data
 ```
 - In general, spectratype still clusters by subject rather than vaccine status
 
+# Diversity analysis
 
+- Clonal expansion results in a change in repertoire diversity. Theoretically, prior to any form of clonal expansion, the frequency of individual antigen receptor clones will be relatively uniform. After clonal expansion, a limited set of antigen receptors will increase in frequency, while all others will decrease.
+- This change from uniform frequency distribution to skewed frequency distribution represents a change from high diversity to lower diversity. 
+- Various measures of diversity can be borrowed from ecology to measure the diversity of the antigen receptor repertoire. 
 
+### Shannon diversity
 
+- Shannon diversity is the most commonly used single metric of diversity
+- Can loosely be interpreted as "how many guesses would you need to narrow down to list of all possible receptor sequences to a single sequence of interest" 
 
+$-\sum_{i=1}^{n} p(x_i) \ln p(x_i) $ 
+
+```{r}
+immmdata_shannon <- repDiversity(immdata$data, 
+             .method = "div",
+             .q=1,
+             .col = "aa",
+             ) %>% 
+  mutate(Value = log(Value)) # Immunarch returns diversity values as Hill numbers. Diversity = log(Hill)
+immmdata_shannon
+```
+
+```{r, fig.width=4, fig.height=4, warning=F}
+vis(immmdata_shannon, .by = "day", .meta = immdata$meta) + 
+  ylab("Shannon diversity")+
+  ggtitle(label = NULL, subtitle = NULL)
+```
+- This result is somewhat unexpected, given that it indicates diversity **increases** after yellow-fever vaccinations. If anything, would expect reduced diversity due to post-vaccination clonal expansion.
+  - May be attributable to mini data set. 
+
+### Renyi diversity
+
+- Shannone diversity only provides one perspective of diversity and gives roughly equal weight to high frequency and low frequency antigen receptor clones 
+- However, there are other metrics that measure diversity from the perspective of higher or lower frequency clones. 
+  - E.g. total unique receptor number weights all clones the same, while the Inverse-Simpson index mostly measures high frequency clones. 
+- Renyi entropy is a generalization of diversity that unifies many metrics including Shannon entropy across a spectrum of "Q-values"
+  - Renyi q=0 = log(total number of clones)
+  - Renyi q=1 = Shannon entropy
+  - Renyi q=2 = log(Inverse Simpson index)
+  - Renyi q=infinite = log(Berger Parker index)
+- Renyi entropy over a range of Q values can be used to give a more full picture of diversity
+
+```{r}
+repDiversity(immdata$data, 
+             .method = "hill",
+             .min.q=0,
+             .max.q=5,
+             .col = "aa",
+             ) %>% 
+  mutate(Value = log(Value)) %>% 
+  vis(.by = "day", .meta = immdata$meta) +
+  scale_color_brewer(palette = "Dark2") +
+  ylab("Renyi diversity")+
+  ggtitle(NULL, NULL)
+```
+
+- This demonstrates that the difference in diversity between pre- and post-vaccination samples is most prominent with the total number of species and becomes less prominent when focusing on higher frequency clones
+
+```{r, fig.width=6, fig.height=4}
+repDiversity(immdata$data, 
+             .method = "hill",
+             .min.q=0,
+             .max.q=5,
+             .col = "aa",
+             ) %>% 
+  mutate(Value = log(Value)) %>% 
+  pivot_wider(names_from = "Q", values_from = "Value") %>% 
+  tibble::column_to_rownames("Sample") %>% 
+  pheatmap::pheatmap(cluster_cols = F, color = viridis::viridis(100), main = "Renyi diversity clustering")
+```
+
+- Can also use the sequence of Renyi diversity values as the basis for 
+
+### Chao1
+
+- Chao1 is an index that attempts to provide a more accurate estimation of the total number of unique receptors for each sample.
+- Assumes that the total number of unique receptors detected is dependent on how deep the sequencing is. 
+- Can estimate how deep the sampling is based on frequency of "singletons", i.e. the number of receptors counted only once. - Chao1 corrects total number of unique receptors based on the number of singletons.
+
+```{r, fig.width=4, fig.height=5, warning=F}
+repDiversity(immdata$data, 
+             .method = "chao1",
+             .col = "aa",
+             ) %>% 
+ vis(.by = "day", .meta = immdata$meta)
+```
 
 # Similarity analysis
 
+- A major goal or repertoire analysis is to try to identify individuals with similar repertoires and what makes them similar. 
+- In the case of vaccination, can you show that the repertoires of immunized individuals become more similar to each other than they are to unimmunized individuals? Would show that the vaccination induces some sort of reproducible shift in antigen specificity. 
+
+
+### Public sequences
+
+- Definition is not universally agreed upon, but public antigen receptor sequences are generally understood to represent sequences found in more than one sample 
+- In the case of `immunarch`, public sequence "distance" indicates the number of antigen receptor sequences shared between two samples
+
 ```{r}
-# .col = how a clone is defined, e.g. nt, aa, aa+v
-# .method = overlap metric 
-imm_ov_public <- repOverlap(immdata$data, .col = "aa", .method = "public", .verbose = F)
-imm_ov_j <- repOverlap(immdata$data, .col = "aa", .method = "jaccard", .verbose = F)
-imm_ov_mh <- repOverlap(immdata$data, .col = "aa", .method = "morisita", .verbose = F)
-```
-```{r}
-imm_ov_public %>% as.dist() %>% broom::tidy()%>% arrange(desc(distance))
-imm_ov_j %>% as.dist() %>% broom::tidy() %>% arrange(desc(distance))
-```
-```{r}
-immdata$data$`Subject 1_PBMC_Day 0`
+immdata_public <- repOverlap(immdata$data, .col = "aa", .method = "public", .verbose = F)
+immdata_public %>% as.dist() %>% broom::tidy()%>% arrange(desc(distance))
 ```
 
+### Jaccard index
+
+- The **Jaccard index** represents the fraction of shared antigen receptors between two samples, relative to the total number of unique receptor sequences in the two samples (i.e. the intersection divided by the union)
+- Simple to interpret and widely used outside of antigen repertoire analysis as well
+
+```{r}
+immdata_jaccard <- repOverlap(immdata$data, .col = "aa", .method = "jaccard", .verbose = F)
+immdata_jaccard %>% as.dist() %>% broom::tidy() %>% arrange(desc(distance))
+```
+- For example, the pre- and post- vaccination samples for subject 9 share ~3% of their combined antigen receptors
 
 ```{r, fig.width = 7, fig.height = 6}
-vis(imm_ov_public, "heatmap2", .color = viridis::viridis(100))
-vis(imm_ov_mh, "heatmap2", .color = viridis::viridis(100))
+vis(immdata_jaccard, "heatmap2", .color = viridis::viridis(100))
 ```
 
+### Morisita-Horn index
 
+- Probability that a random draw from each population will be same receptor sequence relative to the probability that two random draws from the pooled repertoires will be the same species
+- Unlike Jaccard index, takes the frequencies of each receptor into account
+- Relatively well known within antigen receptor repertoire analysis, less familiar as a similarity metric in other areas.
+
+
+```{r}
+immdata_mh <- repOverlap(immdata$data, .col = "aa", .method = "morisita", .verbose = F)
+immdata_mh %>% as.dist() %>% broom::tidy() %>% arrange(desc(distance))
+```
+
+```{r, fig.width = 7, fig.height = 6}
+vis(immdata_mh, "heatmap2", .color = viridis::viridis(100))
+```
+
+- All similarity indices clustered samples based on subject, rather than vaccine status
 
