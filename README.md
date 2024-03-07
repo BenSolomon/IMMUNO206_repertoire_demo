@@ -57,28 +57,42 @@
 
 # Downloading data from ImmuneAccess
 
+### Using data viewer
+
 -   **[Create ImmunoSeq account and login](https://clients.adaptivebiotech.com/login)**
 
-    <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
+    <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess login" width="800"/>
 
 -   **[ImmuneAccess project search](https://clients.adaptivebiotech.com/immuneaccess)**
 
-    <img src="img/immuneaccess_project_search.jpg" alt="ImmuneAccess Login" width="800"/>
+    <img src="img/immuneaccess_project_search.jpg" alt="ImmuneAccess project search" width="800"/>
 
 -   **[Yellow Fever vaccine project on ImmuneAccess](https://clients.adaptivebiotech.com/pub/dewitt-2015-jvi)**
+  - To open dataset, click on "Open in Analyses"
 
-    <img src="img/immuneaccess_project_page.jpg" alt="ImmuneAccess Login" width=800"/>
+    <img src="img/immuneaccess_project_page.jpg" alt="ImmuneAccess project page" width=800"/>
 
+-   ***Download sample sequences***
+
+    <img src="img/immuneaccess_sequence_download.jpg" alt="ImmuneAccess data viewer sample download" width="800"/>
+    
 - **Download sample metadata**
   - Click the "+ Analysis" button to create a new analysis window
+
+    <img src="img/immuneaccess_data_overview.png" alt="ImmuneAccess data viewer metadata download 1" width="800"/>
+    
   - Click the top "Export" button (note there are two export buttons, the lower relates to samples)
+  
+    <img src="img/immuneaccess_metadata_download.png" alt="ImmuneAccess data viewer metadata download 2" width="800"/>
+    
 
-    <img src="img/immuneaccess_data_overview.png" alt="ImmuneAccess Login" width="800"/>
-    <img src="img/immuneaccess_metadata_download.png" alt="ImmuneAccess Login" width="800"/>
+### ImmuneAccess API
 
-- Download sample sequences
+-   Adaptive also provides an API to search and download repertoire data
+-   However, it is not well publicized and not very user friendly
+-   Information for the API can be found by searching for "API" in the [ImmuneAccess help search](https://clients.adaptivebiotech.com/help).
 
-    <img src="img/immuneaccess_set_sequence_details.jpg" alt="ImmuneAccess Login" width="800"/>
+    <img src="img/immuneaccess_api.jpg" alt="ImmuneAccess API search results" width="800"/>
 
 
 
