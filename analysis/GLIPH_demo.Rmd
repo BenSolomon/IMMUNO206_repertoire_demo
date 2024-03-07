@@ -16,7 +16,7 @@ library(here)
 
 ```{r, message=F, warning=F}
 # Load data as described in `immunarch_demo.Rmd`
-immdata <- repLoad(here("yf_data_mini"), .coding = TRUE)
+immdata <- repLoad(here("data/yf_data_mini"), .coding = TRUE)
 ```
 
 ```{r}
@@ -35,7 +35,7 @@ gliph_format
 ```
 
 ```{r}
-write_tsv(gliph_format, here("gliph_data/gliph_input.tsv"))
+write_tsv(gliph_format, here("data/gliph_data/gliph_input.tsv"))
 ```
 
 # Submitting data to GLIPH2 web app
@@ -61,7 +61,7 @@ write_tsv(gliph_format, here("gliph_data/gliph_input.tsv"))
 # Analyzing GLIPH2 output
 
 ```{r, message=FALSE}
-gliph_df <- read_csv(here("gliph_data/gliph_output.csv"))
+gliph_df <- read_csv(here("data/gliph_data/gliph_output.csv"))
 gliph_df
 ```
 

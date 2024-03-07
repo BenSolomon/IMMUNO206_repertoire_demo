@@ -27,7 +27,7 @@ library(here)
 # Note: .coding is TRUE by default, which limits input data only to those in-frame
 #       antigen receptors. Typically, out of frame receptor sequences can be 
 #       ignored, but it is important to be aware of this behavior. 
-immdata <- repLoad(here("yf_data_mini"), .coding = FALSE)
+immdata <- repLoad(here("data/yf_data_mini"), .coding = FALSE)
 ```
 
 - Note several warnings given: `Warning: One or more parsing issues, call problems() on your data frame for details, e.g.: dat <- vroom(...)`
@@ -64,7 +64,7 @@ head(noncoding(immdata$data$`Subject 1_PBMC_Day 0`)) # outofframes() similar to 
 
 ```{r, message=F, warning=F}
 # Reloading data to exclude noncoding receptors 
-immdata <- repLoad(here("yf_data_mini"), .coding = TRUE)
+immdata <- repLoad(here("data/yf_data_mini"), .coding = TRUE)
 ```
 
 

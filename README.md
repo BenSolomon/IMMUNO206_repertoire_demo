@@ -57,8 +57,6 @@
 
 # Downloading data from ImmuneAccess
 
-- Included for reference
-
 -   **[Create ImmunoSeq account and login](https://clients.adaptivebiotech.com/login)**
 
     <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
@@ -71,14 +69,16 @@
 
     <img src="img/immuneaccess_project_page.jpg" alt="ImmuneAccess Login" width=800"/>
 
-- Download sample metadata
+- **Download sample metadata**
+  - Click the "+ Analysis" button to create a new analysis window
+  - Click the top "Export" button (note there are two export buttons, the lower relates to samples)
 
-<img src="img/immuneaccess_data_overview.png" alt="ImmuneAccess Login" width="500"/>
-<img src="img/immuneaccess_metadata_download.png" alt="ImmuneAccess Login" width="500"/>
+    <img src="img/immuneaccess_data_overview.png" alt="ImmuneAccess Login" width="800"/>
+    <img src="img/immuneaccess_metadata_download.png" alt="ImmuneAccess Login" width="800"/>
 
 - Download sample sequences
 
-<img src="img/immuneaccess_set_sequence_details.jpg" alt="ImmuneAccess Login" width="500"/>
+    <img src="img/immuneaccess_set_sequence_details.jpg" alt="ImmuneAccess Login" width="800"/>
 
 
 
