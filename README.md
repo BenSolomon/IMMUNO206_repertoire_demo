@@ -2,13 +2,15 @@
 
 - This repo contains a introductory demo to antigen receptor repertoire analysis
 - This demo utilizes data from [A study of the human T-cell response to yellow fever vaccination](https://pubmed.ncbi.nlm.nih.gov/25653453/)
-  - A reduced version of this data is available in `/yf_data_mini`
+  - A reduced version of this data is available in `data/yf_data_mini`
   - The raw data was processed into the mini dataset using `scripts/make_mini_yf_data.R`
   - Instructions for downloading the raw data from ImmuneAccess are included below
-- A demo of general TCR analysis using `immunarch` is found in `immunarch_demo.Rmd`
-  - Repertoire analysis is typically performed with custom workflows or task-specific tools, but `immunarch` does a good job of unifying general analytical approaches, at the expense of some flexibility.
-- A demo of TCR motif analysis using `GLIPH2` is found in `GLIPH_demo.Rmd`
-  - GLIPH2 is one of many ways available to attempt TCR clustering and while there is no clear "best" or "most popular" approach, GLIPH2 is one of the most commonly implemented at this time. 
+- Several analysis demos are found in the `analysis/` directory
+  - A demo of general TCR analysis using `immunarch` is found in `analysis/immunarch_demo.Rmd`
+    - Repertoire analysis is typically performed with custom workflows or task-specific tools, but `immunarch` does a good job of unifying general analytical approaches, at the expense of some flexibility.
+  - A demo of TCR motif analysis using `GLIPH2` is found in `analysis/GLIPH_demo.Rmd`
+    - GLIPH2 is one of many ways available to attempt TCR clustering and while there is no clear "best" or "most popular" approach, GLIPH2 is one of the most commonly implemented at this time. 
+    - Additional data for the `GLIPH2` demo is found in `data/gliph_data`
 - `renv` is used in this demo to help generate a reproducible working environment
 
 
