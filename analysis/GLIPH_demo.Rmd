@@ -47,16 +47,22 @@ write_tsv(gliph_format, here("data/gliph_data/gliph_input.tsv"))
 
 - **[Create GLIPH account](http://50.255.35.37:8080/signup)**
 
+    
 - **[Login to GLIPH account](http://50.255.35.37:8080/login)**
 
-  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
-  
+    ![](../img/gliph_login.jpg)
+
 - **[Submit new GLIPH project](http://50.255.35.37:8080/project)**
 
-  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
-  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
+  - Add new project
+
+    ![](../img/gliph_submission_1.jpg)
+   
+  - Input project parameters
   
-    - GLIPH2 will run in the background. Periodically check the project tab to see if your project is complete
+    ![](../img/gliph_submission_2.jpg)
+
+- GLIPH2 will run in the background. Periodically check the project tab to see if your project is complete, then click download
 
 # Analyzing GLIPH2 output
 
