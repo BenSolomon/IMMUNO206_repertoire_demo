@@ -1,0 +1,130 @@
+---
+title: "Yellow fever `GLIPH2` demo"
+output: 
+  html_notebook:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r}
+library(immunarch)
+library(here)
+```
+
+# Preparing data for GLIPH2
+
+```{r, message=F, warning=F}
+# Load data as described in `immunarch_demo.Rmd`
+immdata <- repLoad(here("yf_data_mini"), .coding = TRUE)
+```
+
+```{r}
+gliph_format <- tibble(sample = names(immdata$data), data = immdata$data) %>% 
+  separate(sample, into = c("subject", "cell", "day"), sep = "_", ) %>% 
+  unite("subject:condition", c("subject", "day"), sep = ":") %>% 
+  mutate(`subject:condition` = gsub(" ","",`subject:condition`)) %>% # Remove spaces in strings
+  unnest(data) %>% 
+  select(
+    CDR3b = CDR3.aa,
+    Vb = V.name,
+    Jb = J.name,
+    `subject:condition`,
+    count = Clones)
+gliph_format
+```
+
+```{r}
+write_tsv(gliph_format, here("gliph_data/gliph_input.tsv"))
+```
+
+# Submitting data to GLIPH2 web app
+
+- `GLIPH2` is available as an executable as well as an online application. The executable is more flexible with fewer limitations, but can be more difficult to use (since it is pre-compiled, it may only work on certain operating systems/distributions).
+- Here we will use the online application. NOTE the limitations that you are informed of when submitting data to this application. 
+
+### Online submission
+
+- **[Create GLIPH account](http://50.255.35.37:8080/signup)**
+
+- **[Login to GLIPH account](http://50.255.35.37:8080/login)**
+
+  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
+  
+- **[Submit new GLIPH project](http://50.255.35.37:8080/project)**
+
+  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
+  <img src="img/immuneaccess_login.jpg" alt="ImmuneAccess Login" width="800"/>
+  
+    - GLIPH2 will run in the background. Periodically check the project tab to see if your project is complete
+
+# Analyzing GLIPH2 output
+
+```{r, message=FALSE}
+gliph_df <- read_csv(here("gliph_data/gliph_output.csv"))
+gliph_df
+```
+
+- `index` - arbitrary integer to represent a unique GLIPH cluster
+- `pattern` - the amino acid pattern used to define the cluster
+- `number_subject` - number of samples the cluster is found in
+- `number_unique_cdr3` - number of unique antigen receptor sequences contained in the cluster
+- `Freq` - count of the given cluster-TCR combination found in a sample
+  - Essentially the same as the count for the antigen receptor in the sample, except that an individual antigen receptor can be a member of multiple clusters, so each of the cluster-antigen receptor pairs will have a count equal to the antigen receptor itself
+- Multiple columns reflective scores that determined clustering
+
+### Similarity based on GLIPH clusters
+
+- Instead of calculating similarity based on raw CDR3 clusters as before, we can use the frequency of different GLIPH clusters within a sample as the basis for calculating similarity
+- The rationale is that comparing individual strings of amino acid sequences does not confer much information about what that sequence is doing. Two antigen receptors might bind the same antigen using very different amino acid sequences, but similar protein structures.
+- GLIPH clusters may reflect motifs that better capture similar antigen receptor **function**. 
+
+```{r}
+immdata_mh_comp <- gliph_df %>% 
+  count(Sample, index, sort = T) %>% 
+  pivot_wider(names_from = "index", values_from = "n", values_fill = 0) %>% 
+  tibble::column_to_rownames("Sample") %>% 
+  vegan::decostand(method = "tota", MARGIN = 1) %>% 
+  vegan::vegdist(method = "horn") %>% 
+  # as.dist() %>% 
+  broom::tidy() %>% 
+  mutate(similarity = 1-distance) %>% 
+  unite(comp, item1, item2) %>% 
+  mutate(group = case_when(
+    stringr::str_count(comp, "Day14") == 2 ~ "Post vs. Post",
+    stringr::str_count(comp, "Day0") == 2 ~ "Pre vs. Pre",
+    TRUE ~ "Pre vs. Post"
+  )) %>% 
+  mutate(group = forcats::fct_relevel(group, "Pre vs. Pre", "Pre vs. Post", "Post vs. Post"))
+
+immdata_mh_comp
+```
+```{r}
+immdata_mh_comp %>% 
+  ggplot(aes(x=group,y=similarity))+
+  geom_violin()+
+  geom_jitter(size = 0.5, width = 0.1)+
+  theme_bw() +
+  labs(x = NULL, y = "Morisita Horn Similarity")+
+  ggtitle("Similarity based on vaccine status", subtitle = "GLIPH-transformed CDR3 sequences")
+```
+
+
+```{r}
+pairwise.wilcox.test(x=immdata_mh_comp$similarity, g=immdata_mh_comp$group, p.adjust.method = "BH")
+```
+- Note that unlike raw CDR3 comparisons from `immunarch_demo.Rd", the GLIPH-based comparison actually reveals that repertoires of samples after yellow fever vaccination become more similar. 
+
+```{r, fig.width=6, fig.height=5}
+gliph_df %>% 
+  count(Sample, index, sort = T) %>% 
+  pivot_wider(names_from = "index", values_from = "n", values_fill = 0) %>% 
+  tibble::column_to_rownames("Sample") %>% 
+  vegan::vegdist(method = "horn") %>% 
+  {1-as.matrix(.)} %>% 
+  pheatmap::pheatmap(color = viridis::viridis(100), 
+                     breaks = seq(0, 0.25, length.out = 100), # Color scale squished to show structure
+                     main = "GLIPH-based Morisita Horn Similarity"
+                     )
+```
+

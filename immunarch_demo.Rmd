@@ -355,3 +355,32 @@ vis(immdata_mh, "heatmap2", .color = viridis::viridis(100))
 
 - All similarity indices clustered samples based on subject, rather than vaccine status
 
+```{r}
+immdata_mh_comp <- immdata_mh %>% as.dist() %>% broom::tidy() %>% arrange(desc(distance)) %>% 
+  unite(comp, item1, item2) %>% 
+  mutate(comp = gsub(" ", "", comp)) %>% 
+  mutate(group = case_when(
+    stringr::str_count(comp, "Day14") == 2 ~ "Post vs. Post",
+    stringr::str_count(comp, "Day0") == 2 ~ "Pre vs. Pre",
+    TRUE ~ "Pre vs. Post"
+  )) %>% 
+  mutate(group = forcats::fct_relevel(group, "Pre vs. Pre", "Pre vs. Post", "Post vs. Post"))
+immdata_mh_comp  
+```
+```{r}
+immdata_mh_comp %>% 
+  ggplot(aes(x=group,y=distance))+
+  geom_violin()+
+  geom_jitter(size = 0.5, width = 0.1)+
+  theme_bw() +
+  labs(x = NULL, y = "Morisita Horn Similarity")+
+  ggtitle("Similarity based on vaccine status", subtitle = "Raw CDR3 sequences")
+```
+```{r}
+pairwise.wilcox.test(x=immdata_mh_comp$distance, g=immdata_mh_comp$group, p.adjust.method = "BH")
+```
+
+
+
+
+
